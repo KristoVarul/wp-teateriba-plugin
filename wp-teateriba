@@ -1,0 +1,129 @@
+<?php
+/**
+ * Plugin Name: Kristo Teateriba
+ * Description: Kuvab muudetava tekstiga teateriba lehe ülaservas.
+ * Version: 1.0
+ * Author: Kristo Varul
+ */
+
+// 1. Lisa menüüpunkt admin paneeli
+add_action('admin_menu', 'teateriba_lisa_menuu');
+
+function teateriba_lisa_menuu() {
+    add_menu_page(
+        'Teateriba Seaded',
+        'Sinu Nime Teateriba', // Menüü nimi admin paneelis
+        'manage_options',
+        'teateriba-seaded',
+        'teateriba_seadete_leht',
+        'dashicons-megaphone'
+    );
+}
+
+// 2. Seadete lehe HTML vorm
+function teateriba_seadete_leht() {
+    // Salvesta andmed, kui vorm postitatakse
+    if (isset($_POST['save_teateriba'])) {
+        update_option('tr_tekst', sanitize_text_field($_POST['tr_tekst']));
+        update_option('tr_taust', sanitize_hex_color($_POST['tr_taust']));
+        update_option('tr_tekstivarv', sanitize_hex_color($_POST['tr_tekstivarv']));
+        update_option('tr_ainult_avalehel', isset($_POST['tr_ainult_avalehel']) ? '1' : '0');
+        update_option('tr_aktiivne', isset($_POST['tr_aktiivne']) ? '1' : '0');
+        echo '<div class="updated"><p>Seaded salvestatud!</p></div>';
+    }
+
+    // Võta olemasolevad väärtused
+    $tekst = get_option('tr_tekst', 'Tere tulemast!');
+    $taust = get_option('tr_taust', '#ff0000');
+    $varv = get_option('tr_tekstivarv', '#ffffff');
+    $ainult_avalehel = get_option('tr_ainult_avalehel', '0');
+    $aktiivne = get_option('tr_aktiivne', '1');
+    ?>
+
+    <div class="wrap">
+        <h1>Teateriba seaded</h1>
+        <form method="post">
+            <table class="form-table">
+                <tr>
+                    <th>Teate tekst</th>
+                    <td><input type="text" name="tr_tekst" value="<?php echo esc_attr($tekst); ?>" class="regular-text"></td>
+                </tr>
+                <tr>
+                    <th>Taustavärv</th>
+                    <td><input type="color" name="tr_taust" value="<?php echo esc_attr($taust); ?>"></td>
+                </tr>
+                <tr>
+                    <th>Teksti värv</th>
+                    <td><input type="color" name="tr_tekstivarv" value="<?php echo esc_attr($varv); ?>"></td>
+                </tr>
+                <tr>
+                    <th>Näita teadet</th>
+                    <td><input type="checkbox" name="tr_aktiivne" value="1" <?php checked($aktiivne, '1'); ?>> (Enable/Disable)</td>
+                </tr>
+                <tr>
+                    <th>Ainult avalehel</th>
+                    <td><input type="checkbox" name="tr_ainult_avalehel" value="1" <?php checked($ainult_avalehel, '1'); ?>></td>
+                </tr>
+            </table>
+            <input type="submit" name="save_teateriba" class="button button-primary" value="Salvesta seaded">
+        </form>
+    </div>
+    <?php
+}
+
+// 3. Kuvamine veebilehe ülaosas
+add_action('wp_footer', 'teateriba_kuva_riba'); // Kasutame wp_footer, et riba oleks DOM-is olemas
+
+function teateriba_kuva_riba() {
+    $aktiivne = get_option('tr_aktiivne', '1');
+    if ($aktiivne !== '1') return;
+
+    $ainult_avalehel = get_option('tr_ainult_avalehel', '0');
+    if ($ainult_avalehel === '1' && !is_front_page()) return;
+
+    $tekst = get_option('tr_tekst', 'Tere tulemast!');
+    $taust = get_option('tr_taust', '#ff0000');
+    $varv = get_option('tr_tekstivarv', '#ffffff');
+    ?>
+
+    <div id="minu-teateriba" style="
+        background-color: <?php echo esc_attr($taust); ?>;
+        color: <?php echo esc_attr($varv); ?>;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        text-align: center;
+        padding: 15px 0;
+        z-index: 9999;
+        font-family: sans-serif;
+        font-weight: bold;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    ">
+        <span><?php echo esc_html($tekst); ?></span>
+        <button id="sulge-teateriba" style="
+            margin-left: 20px;
+            background: rgba(0,0,0,0.2);
+            border: none;
+            color: <?php echo esc_attr($varv); ?>;
+            cursor: pointer;
+            padding: 5px 10px;
+            border-radius: 3px;
+        ">X</button>
+    </div>
+
+    <script>
+        document.getElementById('sulge-teateriba').addEventListener('click', function() {
+            document.getElementById('minu-teateriba').style.display = 'none';
+        });
+    </script>
+
+    <style>
+        /* Nihutame ülejäänud lehte allapoole, et riba midagi ära ei varjaks */
+        body { margin-top: 50px !important; }
+        @media screen and (max-width: 600px) { body { margin-top: 70px !important; } }
+    </style>
+    <?php
+}
